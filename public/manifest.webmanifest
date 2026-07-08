@@ -1,0 +1,10 @@
+{
+  "name": "PokeBay",
+  "short_name": "PokeBay",
+  "description": "UK Pokémon card and sealed product deal finder for eBay.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#070a12",
+  "theme_color": "#111827",
+  "icons": []
+}
