@@ -37,16 +37,24 @@ export async function searchEbayExperimental({ query, settings = {}, sold = fals
         headers: {
           Accept: 'text/html,application/xhtml+xml',
           'Accept-Language': 'en-GB,en;q=0.9',
-          'User-Agent': 'PokeBayLocalDealResearch/0.1 (+https://github.com/DrDoback06/PokeBay; manual personal use)'
+          'User-Agent': 'Mozilla/5.0 (compatible; PokeBayLocalDealResearch/0.2; +https://github.com/DrDoback06/PokeBay)'
         }
       }, 12000);
-      if (!response.ok) { warnings.push(`eBay returned ${response.status} for ${query}`); continue; }
+      if (!response.ok) {
+        warnings.push(`eBay public search returned ${response.status}. Use the generated eBay links manually or add official eBay API support later.`);
+        continue;
+      }
       const html = await response.text();
+      if (/captcha|robot|access denied|pardon our interruption/i.test(html)) {
+        warnings.push('eBay returned an anti-bot or access-check page. Generated manual links are still available.');
+        continue;
+      }
       const parsed = parseEbayListings(html, { sourceUrl: url, sold });
+      if (!parsed.length) warnings.push(`No parseable eBay listing cards found for "${query}". Open the generated search link manually.`);
       cache.set(url, { createdAt: Date.now(), results: parsed });
       allResults.push(...parsed);
     } catch (error) {
-      warnings.push(`Could not fetch eBay results for "${query}": ${error.message}`);
+      warnings.push(`Could not fetch eBay results for "${query}": ${error.message}. Open the generated search link manually.`);
     }
   }
   return { query, sold, results: uniqueBy(allResults, (item) => item.itemId || item.url).slice(0, 80), warnings };
@@ -84,9 +92,9 @@ export function parseEbayListings(html, { sourceUrl, sold = false } = {}) {
     const url = linkMatch ? decodeHtml(linkMatch[1]).split('?')[0] : null;
     if (!url) continue;
     const priceText = stripTags(matchFirst(block, /<span[^>]+class="[^"]*s-item__price[^"]*"[^>]*>([\s\S]*?)<\/span>/i));
-    const shippingText = stripTags(matchFirst(block, /<span[^>]+class="[^"]*s-item__shipping[^\"]*"[^>]*>([\s\S]*?)<\/span>/i));
-    const bidsText = stripTags(matchFirst(block, /<span[^>]+class="[^"]*s-item__bids[^\"]*"[^>]*>([\s\S]*?)<\/span>/i));
-    const location = stripTags(matchFirst(block, /<span[^>]+class="[^"]*s-item__location[^\"]*"[^>]*>([\s\S]*?)<\/span>/i));
+    const shippingText = stripTags(matchFirst(block, /<span[^>]+class="[^"]*s-item__shipping[^"]*"[^>]*>([\s\S]*?)<\/span>/i));
+    const bidsText = stripTags(matchFirst(block, /<span[^>]+class="[^"]*s-item__bids[^"]*"[^>]*>([\s\S]*?)<\/span>/i));
+    const location = stripTags(matchFirst(block, /<span[^>]+class="[^"]*s-item__location[^"]*"[^>]*>([\s\S]*?)<\/span>/i));
     const image = decodeHtml(matchFirst(block, /<img[^>]+src="([^"]+)"/i));
     results.push({ itemId: extractEbayItemId(url), title, url, image: image || null, priceText, priceGbp: parsePounds(priceText), shippingText, shippingGbp: parseShipping(shippingText), bidsText: bidsText || null, location: location || null, sold, sourceUrl });
   }
