@@ -1,9 +1,10 @@
+import './lib/env.js';
 import http from 'node:http';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { searchCards, searchSets, getSetCards, getCard } from './lib/pokemon.js';
-import { addScanHistory, deleteWatchItem, getWatchlist, patchWatchItem, readDb, upsertWatchItem } from './lib/storage.js';
+import { searchCards, searchSets, getSetCards, getCard, getSet } from './lib/pokemon.js';
+import { addScanHistory, deleteWatchItem, getPortfolio, getWatchlist, importPortfolioSet, patchPortfolioCard, patchWatchItem, readDb, removePortfolioSet, upsertWatchItem, watchedPortfolioTargets } from './lib/storage.js';
 import { buildEbaySearchUrl, scoreListingsForTarget, searchEbayExperimental } from './lib/ebay.js';
 import { clampNumber, jsonResponse, readJsonBody, uniqueBy } from './lib/utils.js';
 
@@ -22,7 +23,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname.startsWith('/api/')) return await handleApi(req, res, url);
     await serveStatic(res, url.pathname);
   } catch (error) {
-    jsonResponse(res, error.statusCode || 500, { error: error.message || 'Unexpected server error', status: error.statusCode || 500 });
+    jsonResponse(res, error.statusCode || 500, { error: error.message || 'Unexpected server error', status: error.statusCode || 500, provider: error.provider || null, providerStatus: error.providerStatus || null });
   }
 });
 
@@ -31,7 +32,7 @@ server.listen(port, () => console.log(`PokeBay running at http://localhost:${por
 async function handleApi(req, res, url) {
   const method = req.method || 'GET';
   const db = await readDb();
-  if (method === 'GET' && url.pathname === '/api/health') return jsonResponse(res, 200, { ok: true, name: 'PokeBay', market: db.settings.market, experimentalEbayScanner: db.settings.experimentalEbayScanner });
+  if (method === 'GET' && url.pathname === '/api/health') return jsonResponse(res, 200, { ok: true, name: 'PokeBay', market: db.settings.market, experimentalEbayScanner: db.settings.experimentalEbayScanner, pokemonApiKeyConfigured: db.settings.pokemonApiKeyConfigured });
   if (method === 'GET' && url.pathname === '/api/settings') return jsonResponse(res, 200, db.settings);
   if (method === 'GET' && url.pathname === '/api/cards/search') {
     return jsonResponse(res, 200, await searchCards({ query: url.searchParams.get('q') || '', pageSize: clampNumber(url.searchParams.get('pageSize'), 1, 60, 24), page: clampNumber(url.searchParams.get('page'), 1, 99, 1), settings: db.settings }));
@@ -41,6 +42,26 @@ async function handleApi(req, res, url) {
   }
   const setCardsMatch = url.pathname.match(/^\/api\/sets\/([^/]+)\/cards$/);
   if (method === 'GET' && setCardsMatch) return jsonResponse(res, 200, await getSetCards({ setId: decodeURIComponent(setCardsMatch[1]), settings: db.settings }));
+
+  if (url.pathname === '/api/portfolio' && method === 'GET') return jsonResponse(res, 200, { data: await getPortfolio() });
+  if (url.pathname === '/api/portfolio/import-set' && method === 'POST') {
+    const body = await readJsonBody(req);
+    if (!body.setId) return jsonResponse(res, 400, { error: 'setId is required' });
+    const [set, cardsResult] = await Promise.all([getSet(body.setId), getSetCards({ setId: body.setId, settings: db.settings })]);
+    const tracker = await importPortfolioSet(set, cardsResult.data || []);
+    return jsonResponse(res, 201, { data: tracker });
+  }
+  const portfolioCardMatch = url.pathname.match(/^\/api\/portfolio\/cards\/([^/]+)$/);
+  if (portfolioCardMatch && method === 'PATCH') {
+    const updated = await patchPortfolioCard(decodeURIComponent(portfolioCardMatch[1]), await readJsonBody(req));
+    return jsonResponse(res, updated ? 200 : 404, updated ? { data: updated } : { error: 'Portfolio card not found' });
+  }
+  const portfolioSetMatch = url.pathname.match(/^\/api\/portfolio\/sets\/([^/]+)$/);
+  if (portfolioSetMatch && method === 'DELETE') {
+    const ok = await removePortfolioSet(decodeURIComponent(portfolioSetMatch[1]));
+    return jsonResponse(res, ok ? 200 : 404, { ok });
+  }
+
   if (url.pathname === '/api/watchlist' && method === 'GET') return jsonResponse(res, 200, { data: await getWatchlist() });
   if (url.pathname === '/api/watchlist' && method === 'POST') return jsonResponse(res, 201, { data: await upsertWatchItem(await readJsonBody(req)) });
   const watchItemMatch = url.pathname.match(/^\/api\/watchlist\/([^/]+)$/);
@@ -58,6 +79,7 @@ async function handleApi(req, res, url) {
     const body = await readJsonBody(req);
     const card = await getCard(body.cardId, db.settings);
     const item = await upsertWatchItem({ type: 'card', name: card.name, query: card.searchQueries[0] || card.name, queries: card.searchQueries, cardId: card.id, setId: card.set?.id, setName: card.set?.name, number: card.number, image: card.images?.small, rarity: card.rarity, marketPriceGbp: card.marketPriceGbp, marketPriceSource: card.marketPriceSource, collectorStatus: body.collectorStatus || 'wanted' });
+    await patchPortfolioCard(card.id, { watch: true, wanted: body.collectorStatus !== 'owned', owned: body.collectorStatus === 'owned' }).catch(() => null);
     return jsonResponse(res, 201, { data: item });
   }
   return jsonResponse(res, 404, { error: 'Route not found' });
@@ -65,6 +87,7 @@ async function handleApi(req, res, url) {
 
 async function scanDeals(body, settings) {
   const watchlist = await getWatchlist();
+  const portfolioTargets = await watchedPortfolioTargets();
   const mode = body.mode || 'watchlist';
   const pages = clampNumber(body.pages, 1, 2, 1);
   const listingType = body.listingType || 'all';
@@ -78,9 +101,13 @@ async function scanDeals(body, settings) {
     const query = String(body.query || '').trim();
     if (!query) { const error = new Error('Custom scan needs a query'); error.statusCode = 400; throw error; }
     targets = [{ id: 'custom', type: body.type || 'sealed', name: query, query, queries: [query], marketPriceGbp: body.marketPriceGbp ? Number(body.marketPriceGbp) : null, marketPriceSource: body.marketPriceGbp ? 'manual custom target' : null }];
+  } else if (mode === 'portfolio') {
+    const requestedIds = Array.isArray(body.portfolioCardIds) ? new Set(body.portfolioCardIds) : null;
+    targets = portfolioTargets.filter((item) => !requestedIds || requestedIds.has(item.cardId)).slice(0, maxItems);
   } else {
+    const allWatchTargets = uniqueBy([...watchlist, ...portfolioTargets], (item) => item.cardId || item.id);
     const requestedIds = Array.isArray(body.watchlistIds) ? new Set(body.watchlistIds) : null;
-    targets = watchlist.filter((item) => !requestedIds || requestedIds.has(item.id)).filter((item) => item.status !== 'ignore').slice(0, maxItems);
+    targets = allWatchTargets.filter((item) => !requestedIds || requestedIds.has(item.id) || requestedIds.has(item.cardId)).filter((item) => item.status !== 'ignore').slice(0, maxItems);
   }
   const generatedSearches = [];
   const scored = [];
