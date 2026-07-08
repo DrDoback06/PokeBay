@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#111827" />
+  <title>PokeBay — UK Pokémon Deal Finder</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">UK-first · local-only · experimental</p>
+        <h1>PokeBay</h1>
+        <p>Find Pokémon card and sealed product listings that look under market before everyone else spots them.</p>
+      </div>
+      <aside>No eBay login scraping · no auto-bidding · manual buying links only</aside>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="deals">Deals</button>
+      <button class="tab" data-tab="watchlist">Watchlist</button>
+      <button class="tab" data-tab="cards">Card Search</button>
+      <button class="tab" data-tab="sets">Set Tracker</button>
+      <button class="tab" data-tab="sealed">Sealed</button>
+      <button class="tab" data-tab="settings">Settings</button>
+    </nav>
+
+    <main>
+      <section id="tab-deals" class="panel active-panel">
+        <div class="heading"><div><h2>Deal Scanner</h2><p>Scan watchlist targets or a custom eBay UK query. The % compares listing total against the target market price.</p></div><button id="scan-watchlist" class="primary">Scan Watchlist</button></div>
+        <div class="grid two">
+          <label>Custom eBay query<input id="custom-query" placeholder="Charizard 4/102 base set" /></label>
+          <label>Manual market price £<input id="custom-market" type="number" step="0.01" min="0" /></label>
+          <label>Listing type<select id="listing-type"><option value="all">All</option><option value="auction">Auctions</option><option value="bin">Buy It Now</option></select></label>
+          <label>Condition<select id="condition"><option value="all">Any</option><option value="new">New/sealed</option><option value="used">Used</option></select></label>
+        </div>
+        <div class="actions"><button id="scan-custom" class="secondary">Scan Custom</button><button id="copy-searches" class="ghost">Copy Searches</button><span id="deal-status"></span></div>
+        <div id="generated-searches" class="generated-searches"></div>
+        <div id="deal-results" class="list"></div>
+      </section>
+
+      <section id="tab-watchlist" class="panel"><h2>Watchlist / Portfolio</h2><p>Add wanted or owned cards here, then scan them for deals.</p><div id="watchlist-items" class="list"></div></section>
+      <section id="tab-cards" class="panel"><h2>Card Search</h2><form id="card-search-form" class="search"><input id="card-query" placeholder="Umbreon, Charizard, Pikachu" /><button class="primary">Search Cards</button></form><div id="card-results" class="cards"></div></section>
+      <section id="tab-sets" class="panel"><h2>Set Tracker</h2><form id="set-search-form" class="search"><input id="set-query" placeholder="Evolving Skies, 151, Prismatic" /><button class="primary">Search Sets</button></form><div id="set-results" class="sets"></div><div id="set-cards" class="cards"></div></section>
+      <section id="tab-sealed" class="panel"><h2>Sealed Targets</h2><p>Use a manual market price for sealed products in free mode.</p><form id="sealed-form" class="grid two"><label>Product name<input id="sealed-name" required /></label><label>eBay query<input id="sealed-query" required /></label><label>Market £<input id="sealed-market" type="number" step="0.01" min="0" required /></label><label>Notes<input id="sealed-notes" /></label><button class="primary">Add Sealed Target</button></form></section>
+      <section id="tab-settings" class="panel"><h2>Settings & Safety</h2><div id="settings-output" class="card"></div><div class="card"><strong>Safety model:</strong> PokeBay opens manual eBay links only. It does not ask for your eBay login, bid, buy, message sellers, or bypass anti-bot checks.</div></section>
+    </main>
+  </div>
+  <script src="/app.js" type="module"></script>
+</body>
+</html>
