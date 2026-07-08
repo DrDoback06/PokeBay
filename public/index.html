@@ -12,25 +12,26 @@
   <div class="app-shell">
     <header class="hero">
       <div>
-        <p class="eyebrow">UK-first · local-only · experimental</p>
+        <p class="eyebrow">UK-first · portfolio tracker · experimental scanner</p>
         <h1>PokeBay</h1>
-        <p>Find Pokémon card and sealed product listings that look under market before everyone else spots them.</p>
+        <p>Import whole Pokémon sets, mark owned/wanted/watch cards, then scan eBay UK for under-market deals.</p>
       </div>
       <aside>No eBay login scraping · no auto-bidding · manual buying links only</aside>
     </header>
 
     <nav class="tabs">
       <button class="tab active" data-tab="deals">Deals</button>
+      <button class="tab" data-tab="portfolio">Portfolio / Tracker</button>
       <button class="tab" data-tab="watchlist">Watchlist</button>
       <button class="tab" data-tab="cards">Card Search</button>
-      <button class="tab" data-tab="sets">Set Tracker</button>
+      <button class="tab" data-tab="sets">Import Sets</button>
       <button class="tab" data-tab="sealed">Sealed</button>
       <button class="tab" data-tab="settings">Settings</button>
     </nav>
 
     <main>
       <section id="tab-deals" class="panel active-panel">
-        <div class="heading"><div><h2>Deal Scanner</h2><p>Scan watchlist targets or a custom eBay UK query. The % compares listing total against the target market price.</p></div><button id="scan-watchlist" class="primary">Scan Watchlist</button></div>
+        <div class="heading"><div><h2>Deal Scanner</h2><p>Scan watchlist and portfolio watch cards. If eBay blocks parsing, generated manual search links still appear.</p></div><button id="scan-watchlist" class="primary">Scan Watchlist + Portfolio</button></div>
         <div class="grid two">
           <label>Custom eBay query<input id="custom-query" placeholder="Charizard 4/102 base set" /></label>
           <label>Manual market price £<input id="custom-market" type="number" step="0.01" min="0" /></label>
@@ -42,11 +43,20 @@
         <div id="deal-results" class="list"></div>
       </section>
 
-      <section id="tab-watchlist" class="panel"><h2>Watchlist / Portfolio</h2><p>Add wanted or owned cards here, then scan them for deals.</p><div id="watchlist-items" class="list"></div></section>
+      <section id="tab-portfolio" class="panel">
+        <div class="heading"><div><h2>Portfolio / Set Tracker</h2><p>Imported sets live here. Filter inside a set, mark owned/wanted, and add individual cards to watchlist searches.</p></div><button id="refresh-portfolio" class="secondary">Refresh</button></div>
+        <div class="grid two compact-controls">
+          <label>Filter imported cards<input id="portfolio-filter" placeholder="Moonbreon, Charizard, 199/203" /></label>
+          <label>Status filter<select id="portfolio-status"><option value="all">All cards</option><option value="watch">Watch only</option><option value="wanted">Wanted</option><option value="owned">Owned</option><option value="missing">Missing</option></select></label>
+        </div>
+        <div id="portfolio-output" class="tracker-list"></div>
+      </section>
+
+      <section id="tab-watchlist" class="panel"><h2>Watchlist</h2><p>These are direct scan targets. Cards watched from imported sets are also included in scans.</p><div id="watchlist-items" class="list"></div></section>
       <section id="tab-cards" class="panel"><h2>Card Search</h2><form id="card-search-form" class="search"><input id="card-query" placeholder="Umbreon, Charizard, Pikachu" /><button class="primary">Search Cards</button></form><div id="card-results" class="cards"></div></section>
-      <section id="tab-sets" class="panel"><h2>Set Tracker</h2><form id="set-search-form" class="search"><input id="set-query" placeholder="Evolving Skies, 151, Prismatic" /><button class="primary">Search Sets</button></form><div id="set-results" class="sets"></div><div id="set-cards" class="cards"></div></section>
+      <section id="tab-sets" class="panel"><h2>Import Sets</h2><p>Search a set, then import the whole set list into Portfolio / Tracker.</p><form id="set-search-form" class="search"><input id="set-query" placeholder="Evolving Skies, 151, Prismatic" /><button class="primary">Search Sets</button></form><div id="set-results" class="sets"></div><div id="set-cards" class="cards"></div></section>
       <section id="tab-sealed" class="panel"><h2>Sealed Targets</h2><p>Use a manual market price for sealed products in free mode.</p><form id="sealed-form" class="grid two"><label>Product name<input id="sealed-name" required /></label><label>eBay query<input id="sealed-query" required /></label><label>Market £<input id="sealed-market" type="number" step="0.01" min="0" required /></label><label>Notes<input id="sealed-notes" /></label><button class="primary">Add Sealed Target</button></form></section>
-      <section id="tab-settings" class="panel"><h2>Settings & Safety</h2><div id="settings-output" class="card"></div><div class="card"><strong>Safety model:</strong> PokeBay opens manual eBay links only. It does not ask for your eBay login, bid, buy, message sellers, or bypass anti-bot checks.</div></section>
+      <section id="tab-settings" class="panel"><h2>Settings & Safety</h2><div id="settings-output" class="card"></div><div class="card"><strong>403 fix:</strong> add a free <code>POKEMON_TCG_API_KEY</code> in your local <code>.env</code> or hosting environment, then restart/redeploy. The app now loads <code>.env</code> automatically.</div><div class="card"><strong>Safety model:</strong> PokeBay opens manual eBay links only. It does not ask for your eBay login, bid, buy, message sellers, or bypass anti-bot checks.</div></section>
     </main>
   </div>
   <script src="/app.js" type="module"></script>
