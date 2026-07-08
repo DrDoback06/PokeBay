@@ -1,13 +1,16 @@
 # PokeBay
 
-PokeBay is a UK-first, local-only Pokémon card and sealed product deal finder for eBay.
+PokeBay is a UK-first Pokémon card and sealed product deal finder for eBay.
 
-It runs as a lightweight Node web app, stores your watchlist in a local JSON file, pulls card/set data from Pokémon TCG API, and generates/scans eBay UK searches experimentally.
+It runs as a lightweight Node web app, stores your watchlist/portfolio in a local JSON file, imports full Pokémon set lists from Pokémon TCG API, and generates/scans eBay UK searches experimentally.
 
 ## What it does now
 
 - Search Pokémon cards and sets.
-- Open a set tracker and add chase cards to a watchlist.
+- Import a whole set into the Portfolio / Set Tracker.
+- Filter imported set cards by name, number, rarity, and tracker status.
+- Mark tracker cards as owned, wanted, or watch.
+- Add individual cards to the direct watchlist.
 - Add sealed product targets with a manual market price.
 - Generate multiple eBay UK search variants per watched card.
 - Experimentally scan public eBay UK search result pages.
@@ -40,6 +43,18 @@ http://localhost:3000
 
 There are currently no package dependencies, so `npm install` is mostly there for standard project workflow.
 
+## Important: Pokémon TCG API key
+
+The app can run without a key, but the no-key Pokémon TCG API limit is much lower and some hosts/IPs may see `403 Forbidden` or rate-limit problems. Get a free key from the Pokémon TCG Developer Portal and add it as:
+
+```bash
+POKEMON_TCG_API_KEY=your_key_here
+```
+
+Local `.env` files are loaded automatically now, so you can copy `.env.example` to `.env` and restart the app.
+
+For hosted deployment, add `POKEMON_TCG_API_KEY` as an environment variable in the hosting dashboard.
+
 ## Optional environment
 
 Copy `.env.example` to `.env` if you want to customise defaults.
@@ -47,8 +62,6 @@ Copy `.env.example` to `.env` if you want to customise defaults.
 ```bash
 cp .env.example .env
 ```
-
-The MVP runs without API keys. A Pokémon TCG API key can be added later for better rate limits. eBay API credentials are reserved for a future official-provider mode.
 
 ## Deal scoring
 
@@ -84,20 +97,34 @@ The experimental scanner:
 - caches repeat searches briefly;
 - returns manual links for you to inspect yourself.
 
-For safest long-term use, add official eBay Browse API support and use the experimental scanner only for personal, low-volume research.
+If eBay blocks or changes the public page markup, PokeBay will still show generated manual search links. For safest long-term use, add official eBay Browse API support and use the experimental scanner only for personal, low-volume research.
 
 ## Useful workflow
 
 1. Search a set, for example `Evolving Skies`.
-2. Add chase cards to Watchlist.
-3. Add sealed targets manually with a realistic market price.
-4. Scan Watchlist.
-5. Open promising eBay links manually.
-6. Treat flags as warnings, not blockers.
+2. Click **Import Whole Set**.
+3. Open **Portfolio / Tracker**.
+4. Mark owned cards and set watch cards.
+5. Scan Watchlist + Portfolio.
+6. Open promising eBay links manually.
+7. Treat flags as warnings, not blockers.
+
+## Deploying from GitHub
+
+GitHub Pages can host only the static frontend, not the Node API, local JSON storage, or eBay scanner. For the actual app, deploy this repository to a Node host from GitHub, for example Render, Railway, Fly.io, or a VPS.
+
+Use:
+
+```bash
+npm install
+npm start
+```
+
+Set the environment variable `POKEMON_TCG_API_KEY` in your host dashboard.
 
 ## Future upgrade path
 
-- Official eBay Browse API provider for live listings.
+- Official eBay Browse API provider for stable live listings.
 - eBay OAuth app-token flow.
 - Optional PriceCharting provider for sealed and graded pricing.
 - Smarter sold-listing market estimate provider.
